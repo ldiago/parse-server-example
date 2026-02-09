@@ -33,7 +33,6 @@ Parse.Cloud.define("deleteAll", async (request) => {
 Parse.Cloud.define("deleteFileStoreBeforeDate", async (request) => {
   const beforeDate = request.params.beforeDate;
   const className = request.params.className || "FileStore";
-  const fileStorePath = process.env.FILE_STORE_PATH || "/parse/files";
 
   if (!beforeDate || typeof beforeDate !== "string") {
     throw new Error('Parameter "beforeDate" is required and must be a string.');
@@ -52,17 +51,6 @@ Parse.Cloud.define("deleteFileStoreBeforeDate", async (request) => {
     throw new Error('Parameter "beforeDate" is invalid.');
   }
 
-  const fs = require("fs");
-  const { promisify } = require("util");
-  const { execFile } = require("child_process");
-  const execFileAsync = promisify(execFile);
-
-  if (!fs.existsSync(fileStorePath)) {
-    throw new Error(
-      `File store path "${fileStorePath}" does not exist on the server.`
-    );
-  }
-
   let deletedRecords = 0;
   const query = new Parse.Query(className);
   query.lessThan("createdAt", parsedDate);
@@ -78,27 +66,23 @@ Parse.Cloud.define("deleteFileStoreBeforeDate", async (request) => {
   }
 
   let deletedFiles = 0;
-  try {
-    const { stdout } = await execFileAsync("find", [
-      fileStorePath,
-      "-type",
-      "f",
-      "!",
-      "-newermt",
-      beforeDate,
-      "-print",
-      "-delete",
-    ]);
-    deletedFiles = stdout ? stdout.split("\n").filter(Boolean).length : 0;
-  } catch (error) {
-    throw new Error(`Failed to delete files: ${error.message}`);
+  const fileQuery = new Parse.Query("_File");
+  fileQuery.lessThan("createdAt", parsedDate);
+  fileQuery.limit(1000);
+
+  while (true) {
+    const fileResults = await fileQuery.find({ useMasterKey: true });
+    if (!fileResults.length) {
+      break;
+    }
+    await Parse.Object.destroyAll(fileResults, { useMasterKey: true });
+    deletedFiles += fileResults.length;
   }
 
   return {
     status: "success",
     deletedRecords,
     deletedFiles,
-    fileStorePath,
     beforeDate,
   };
 });

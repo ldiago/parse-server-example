@@ -19,7 +19,7 @@ function getMetaContent(name: string, defaultValue: string): string {
 }
 
 const defaultAppId = "appid";
-const defaultServerUrl = "http://localhost:8085/api";
+const defaultServerUrl = "http://localhost/api";
 
 const appId = getMetaContent("parse-app-id", defaultAppId);
 const jsKey = getMetaContent("parse-javascript-key", "");

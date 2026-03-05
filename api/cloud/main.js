@@ -1,3 +1,25 @@
+const getParseServerUrl = () => {
+  const parseServerUrl = process.env.PARSE_PUBLIC_SERVER_URL || process.env.PARSE_SERVER_URL;
+  if (!parseServerUrl) {
+    throw new Error("PARSE_PUBLIC_SERVER_URL or PARSE_SERVER_URL must be configured.");
+  }
+
+  return parseServerUrl.replace(/\/$/, "");
+};
+
+const deleteFileFromStorage = async (fileName) => {
+  const serverUrl = getParseServerUrl();
+
+  await Parse.Cloud.httpRequest({
+    method: "DELETE",
+    url: `${serverUrl}/files/${encodeURIComponent(fileName)}`,
+    headers: {
+      "X-Parse-Application-Id": process.env.PARSE_SERVER_APPLICATION_ID,
+      "X-Parse-Master-Key": process.env.PARSE_SERVER_MASTER_KEY,
+    },
+  });
+};
+
 Parse.Cloud.define("deleteAll", async (request) => {
   const className = request.params.className;
 
@@ -75,6 +97,24 @@ Parse.Cloud.define("deleteFileStoreBeforeDate", async (request) => {
     if (!fileResults.length) {
       break;
     }
+
+    for (const fileObject of fileResults) {
+      const fileName = fileObject.get("name");
+
+      if (!fileName) {
+        continue;
+      }
+
+      try {
+        await deleteFileFromStorage(fileName);
+      } catch (error) {
+        const statusCode = error?.status || error?.response?.status;
+        if (statusCode !== 404) {
+          throw new Error(`Failed to delete file from storage "${fileName}": ${error.message}`);
+        }
+      }
+    }
+
     await Parse.Object.destroyAll(fileResults, { useMasterKey: true });
     deletedFiles += fileResults.length;
   }

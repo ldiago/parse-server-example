@@ -3,3 +3,6 @@
 .env
 web/logs
 web/cert
+# Node dependencies
+node_modules/
+web/**/node_modules/

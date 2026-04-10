@@ -1,4 +1,5 @@
 /api/logs
+/api/files
 /db
 .env
 web/logs

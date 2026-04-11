@@ -17,6 +17,8 @@ const TEXT = {
   managerTitle: "File Store マネージャー", // File Store Manager
   fetchAll: "すべてのデータを取得", // Fetch all data
   fetching: "取得中...", // Fetching...
+  fileCount: (count: number) => `ファイル数: ${count}`, // Number of files: count
+  totalStorageUsed: (size: string) => `使用容量: ${size}`, // Used storage: size
   deleteBeforeTitle: "指定日より前のレコードとファイルを削除", // Delete records/files before date
   datePlaceholder: "YYYY-MM-DD",
   deleteAction: "削除する", // Delete
@@ -40,6 +42,46 @@ type DeleteResult = {
 };
 
 const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+const SIZE_KEYS = ["size", "fileSize", "filesize", "bytes"] as const;
+
+const toNumber = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const getRecordSizeInBytes = (record: FileStoreRecord): number => {
+  for (const key of SIZE_KEYS) {
+    const value = record[key];
+    const parsed = toNumber(value);
+    if (parsed !== null && parsed >= 0) {
+      return parsed;
+    }
+  }
+  return 0;
+};
+
+const formatBytes = (bytes: number): string => {
+  if (bytes <= 0) {
+    return "0 B";
+  }
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const exponent = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1
+  );
+  const value = bytes / 1024 ** exponent;
+  const precision = value >= 10 || exponent === 0 ? 0 : 1;
+  return `${value.toFixed(precision)} ${units[exponent]}`;
+};
 
 export function FileStore() {
   const [records, setRecords] = useState<FileStoreRecord[]>([]);
@@ -89,6 +131,11 @@ export function FileStore() {
   };
 
   const previewRecords = records.slice(-5).reverse();
+  const totalStorageUsedInBytes = records.reduce(
+    (sum, record) => sum + getRecordSizeInBytes(record),
+    0
+  );
+  const formattedStorageUsed = formatBytes(totalStorageUsedInBytes);
 
   return (
     <Card className="w-full max-w-md shadow-lg border-opacity-50">
@@ -102,8 +149,10 @@ export function FileStore() {
       <CardContent className="space-y-4 pt-2">
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-sm text-muted-foreground">
-              {TEXT.recordsFetched(records.length)}
+            <div className="text-sm text-muted-foreground space-y-1">
+              <div>{TEXT.recordsFetched(records.length)}</div>
+              <div>{TEXT.fileCount(records.length)}</div>
+              <div>{TEXT.totalStorageUsed(formattedStorageUsed)}</div>
             </div>
             <Button onClick={handleFetch} disabled={isFetching || isDeleting}>
               {isFetching ? TEXT.fetching : TEXT.fetchAll}

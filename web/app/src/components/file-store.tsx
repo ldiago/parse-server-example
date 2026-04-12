@@ -10,14 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { FileStoreRecord } from "@/models";
-import { FileStoreService } from "@/services/file-store.service";
+import { FileStoreService, type FileStoreStats } from "@/services/file-store.service";
 import { AlertCircle, CheckCircle, FileSearch, Trash2 } from "lucide-react";
 
 const TEXT = {
   managerTitle: "File Store マネージャー", // File Store Manager
   fetchAll: "すべてのデータを取得", // Fetch all data
   fetching: "取得中...", // Fetching...
-  fileCount: (count: number) => `ファイル数: ${count}`, // Number of files: count
+  parseFileCount: (count: number) => `_File レコード数: ${count}`,
+  physicalFileCount: (count: number) => `ディスク上の物理ファイル数: ${count}`,
+  orphanFileCount: (count: number) => `検出された孤立ファイル数: ${count}`,
   totalStorageUsed: (size: string) => `使用容量: ${size}`, // Used storage: size
   deleteBeforeTitle: "指定日より前のレコードとファイルを削除", // Delete records/files before date
   datePlaceholder: "YYYY-MM-DD",
@@ -85,6 +87,7 @@ const formatBytes = (bytes: number): string => {
 
 export function FileStore() {
   const [records, setRecords] = useState<FileStoreRecord[]>([]);
+  const [stats, setStats] = useState<FileStoreStats | null>(null);
   const [dateValue, setDateValue] = useState("");
   const [isFetching, setIsFetching] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -95,8 +98,12 @@ export function FileStore() {
     setIsFetching(true);
     setError(null);
     try {
-      const data = await FileStoreService.fetchAllData();
+      const [data, statsData] = await Promise.all([
+        FileStoreService.fetchAllData(),
+        FileStoreService.fetchStats(),
+      ]);
       setRecords(data);
+      setStats(statsData);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch data";
       setError(message);
@@ -131,10 +138,9 @@ export function FileStore() {
   };
 
   const previewRecords = records.slice(-5).reverse();
-  const totalStorageUsedInBytes = records.reduce(
-    (sum, record) => sum + getRecordSizeInBytes(record),
-    0
-  );
+  const totalStorageUsedInBytes =
+    stats?.totalBytes ??
+    records.reduce((sum, record) => sum + getRecordSizeInBytes(record), 0);
   const formattedStorageUsed = formatBytes(totalStorageUsedInBytes);
 
   return (
@@ -151,7 +157,9 @@ export function FileStore() {
           <div className="flex items-center justify-between gap-2">
             <div className="text-sm text-muted-foreground space-y-1">
               <div>{TEXT.recordsFetched(records.length)}</div>
-              <div>{TEXT.fileCount(records.length)}</div>
+              <div>{TEXT.parseFileCount(stats?.parseFileCount ?? records.length)}</div>
+              <div>{TEXT.physicalFileCount(stats?.physicalFileCount ?? 0)}</div>
+              <div>{TEXT.orphanFileCount(stats?.orphanOnDiskCount ?? 0)}</div>
               <div>{TEXT.totalStorageUsed(formattedStorageUsed)}</div>
             </div>
             <Button onClick={handleFetch} disabled={isFetching || isDeleting}>

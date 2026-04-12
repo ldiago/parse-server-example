@@ -1,6 +1,16 @@
 import { FileStoreRecord } from "@/models";
 import Parse, { FILE_STORE_CLASS_NAME } from "@/parse";
 
+export type FileStoreStats = {
+  success: true;
+  filesDir: string;
+  parseFileCount: number;
+  physicalFileCount: number;
+  totalBytes: number;
+  orphanOnDiskCount: number;
+  missingOnDiskCount: number;
+};
+
 type DeleteBeforeDateResponse = {
   status: "success";
   deletedRecords: number;
@@ -10,6 +20,10 @@ type DeleteBeforeDateResponse = {
 };
 
 export class FileStoreService {
+  static async fetchStats(): Promise<FileStoreStats> {
+    return Parse.Cloud.run("getFileStoreStats");
+  }
+
   static async fetchAllData(): Promise<FileStoreRecord[]> {
     const FileStore = Parse.Object.extend(FILE_STORE_CLASS_NAME);
     const records: Parse.Object[] = [];

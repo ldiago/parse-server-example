@@ -63,7 +63,7 @@ export class FileStoreService {
     beforeDate: string
   ): Promise<DeleteBeforeDateResponse> {
     return Parse.Cloud.run("deleteFileStoreBeforeDate", {
-      beforeDate,
+      date: beforeDate,
     });
   }
 }

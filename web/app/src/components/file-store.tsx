@@ -43,7 +43,38 @@ type DeleteResult = {
   filesDir: string;
 };
 
-const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+const normalizeDateToIsoDate = (value: string): string => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const parsedDate = new Date(trimmed);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return trimmed;
+  }
+
+  return parsedDate.toISOString().slice(0, 10);
+};
+
+const isValidDate = (value: string): boolean => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
+    return false;
+  }
+
+  const [, yearString, monthString, dayString] = match;
+  const year = Number.parseInt(yearString, 10);
+  const month = Number.parseInt(monthString, 10);
+  const day = Number.parseInt(dayString, 10);
+
+  const parsedDate = new Date(Date.UTC(year, month - 1, day));
+  return (
+    parsedDate.getUTCFullYear() === year &&
+    parsedDate.getUTCMonth() === month - 1 &&
+    parsedDate.getUTCDate() === day
+  );
+};
 
 const SIZE_KEYS = ["size", "fileSize", "filesize", "bytes"] as const;
 
@@ -113,7 +144,8 @@ export function FileStore() {
   };
 
   const handleDelete = async () => {
-    if (!isValidDate(dateValue)) {
+    const normalizedDate = normalizeDateToIsoDate(dateValue);
+    if (!isValidDate(normalizedDate)) {
       setError(TEXT.invalidDate);
       return;
     }
@@ -121,7 +153,7 @@ export function FileStore() {
     setError(null);
     setDeleteResult(null);
     try {
-      const result = await FileStoreService.deleteRecordsBeforeDate(dateValue);
+      const result = await FileStoreService.deleteRecordsBeforeDate(normalizedDate);
       setDeleteResult({
         deletedRecords: result.deletedRecords,
         deletedFiles: result.deletedFiles,

@@ -40,7 +40,7 @@ const TEXT = {
 type DeleteResult = {
   deletedRecords: number;
   deletedFiles: number;
-  fileStorePath: string;
+  filesDir: string;
 };
 
 const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -125,7 +125,7 @@ export function FileStore() {
       setDeleteResult({
         deletedRecords: result.deletedRecords,
         deletedFiles: result.deletedFiles,
-        fileStorePath: result.fileStorePath,
+        filesDir: result.filesDir,
       });
       await handleFetch();
     } catch (err) {
@@ -200,7 +200,7 @@ export function FileStore() {
               {TEXT.deleteSuccessMessage(
                 deleteResult.deletedRecords,
                 deleteResult.deletedFiles,
-                deleteResult.fileStorePath
+                deleteResult.filesDir
               )}
             </AlertDescription>
           </Alert>

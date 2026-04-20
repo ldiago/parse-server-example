@@ -187,8 +187,18 @@ const parseDateParam = (date) => {
     throw new Error('Parameter "date" is required.');
   }
 
+  let normalizedDateInput = date;
+  if (date instanceof Date) {
+    normalizedDateInput = date.toISOString();
+  } else if (typeof date === "string") {
+    const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+    if (dateOnlyMatch) {
+      const [, year, month, day] = dateOnlyMatch;
+      normalizedDateInput = `${year}-${month}-${day}T00:00:00.000Z`;
+    }
+  }
 
-  const parsedDate = new Date(date);
+  const parsedDate = new Date(normalizedDateInput);
 
 
   if (Number.isNaN(parsedDate.getTime())) {

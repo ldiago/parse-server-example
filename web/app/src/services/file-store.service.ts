@@ -12,11 +12,20 @@ export type FileStoreStats = {
 };
 
 type DeleteBeforeDateResponse = {
-  status: "success";
+  success: true;
   deletedRecords: number;
   deletedFiles: number;
-  fileStorePath: string;
-  beforeDate: string;
+  filesDir: string;
+  date: string;
+};
+
+const toUtcStartOfDayIso = (dateOnly: string): string => {
+  const [year, month, day] = dateOnly.split("-").map(Number);
+  if (!year || !month || !day) {
+    throw new Error("Invalid date format. Expected YYYY-MM-DD.");
+  }
+
+  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0)).toISOString();
 };
 
 export class FileStoreService {
@@ -63,7 +72,7 @@ export class FileStoreService {
     beforeDate: string
   ): Promise<DeleteBeforeDateResponse> {
     return Parse.Cloud.run("deleteFileStoreBeforeDate", {
-      date: beforeDate,
+      date: toUtcStartOfDayIso(beforeDate),
     });
   }
 }
